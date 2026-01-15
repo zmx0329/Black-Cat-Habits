@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Black Cat Habits</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <!-- Polyfill for Drag and Drop on Mobile -->
+  <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+  <script>
+    // Initialize the polyfill
+    var polyfill = MobileDragDrop.polyfill({
+      dragImageOffset: { x: 0, y: 0 },
+      dragImageCenterOnTouch: true
+    });
+    
+    // Fix for preventing scroll while dragging
+    window.addEventListener( 'touchmove', function() {}, { passive: false });
+  </script>
+  <style>
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background-color: #F2F2F7;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior-y: none;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .symbol-filled {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    /* Drag and Drop Styles */
+    .gu-mirror {
+      position: fixed !important;
+      margin: 0 !important;
+      z-index: 9999 !important;
+      opacity: 0.8;
+      -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
+      filter: alpha(opacity=80);
+    }
+    .gu-hide {
+      display: none !important;
+    }
+    .gu-unselectable {
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      user-select: none !important;
+    }
+    .gu-transit {
+      opacity: 0.2;
+      -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=20)";
+      filter: alpha(opacity=20);
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?deps=react@18.2.0,react-dom@18.2.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+  <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
