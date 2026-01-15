@@ -17,8 +17,7 @@ const BottomNav: React.FC = () => {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-1 transition-colors ${
-                isActive ? 'text-black' : 'text-gray-400 hover:text-gray-600'
+              `flex flex-col items-center justify-center gap-1 transition-colors w-full ${isActive ? 'text-black' : 'text-gray-400 hover:text-gray-600'
               }`
             }
           >

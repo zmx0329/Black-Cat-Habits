@@ -16,7 +16,7 @@ export const INITIAL_HABITS: Habit[] = [
     type: HabitType.GOOD,
     description: '工作前清醒一下。',
     frequency: [1, 2, 3, 4, 5],
-    dailyGoal: 1,
+    daily_goal: 1,
     reminders: ['07:00'],
     streak: 5,
     todayCount: 1,
@@ -27,7 +27,7 @@ export const INITIAL_HABITS: Habit[] = [
     type: HabitType.BAD,
     description: '避免下午犯困。',
     frequency: [0, 1, 2, 3, 4, 5, 6],
-    dailyGoal: 3,
+    daily_goal: 3,
     reminders: [],
     streak: 3,
     todayCount: 2,
@@ -38,7 +38,7 @@ export const INITIAL_HABITS: Habit[] = [
     type: HabitType.GOOD,
     description: '睡前习惯养成。',
     frequency: [0, 1, 2, 3, 4, 5, 6],
-    dailyGoal: 1,
+    daily_goal: 1,
     reminders: ['21:00'],
     streak: 12,
     todayCount: 1,
@@ -49,7 +49,7 @@ export const INITIAL_HABITS: Habit[] = [
     type: HabitType.GOOD,
     description: '避免情绪失控。',
     frequency: [0, 1, 2, 3, 4, 5, 6],
-    dailyGoal: 1,
+    daily_goal: 1,
     reminders: ['22:00'],
     streak: 2,
     todayCount: 0,
@@ -60,7 +60,7 @@ export const INITIAL_HABITS: Habit[] = [
     type: HabitType.GOOD,
     description: '保持水分充足。',
     frequency: [0, 1, 2, 3, 4, 5, 6],
-    dailyGoal: 8,
+    daily_goal: 8,
     reminders: [],
     streak: 7,
     todayCount: 3,
@@ -68,9 +68,9 @@ export const INITIAL_HABITS: Habit[] = [
 ];
 
 export const INITIAL_LOGS: Log[] = [
-  { id: '101', habitId: '1', timestamp: Date.now() - 1000 * 60 * 30, status: 'completed' }, // Today morning
-  { id: '102', habitId: '1', timestamp: Date.now() - 1000 * 60 * 60 * 24, status: 'completed' }, // Yesterday
-  { id: '103', habitId: '2', timestamp: Date.now() - 1000 * 60 * 120, status: 'completed' },
+  { id: '101', habit_id: '1', timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), status: 'completed' }, // Today morning
+  { id: '102', habit_id: '1', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), status: 'completed' }, // Yesterday
+  { id: '103', habit_id: '2', timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(), status: 'completed' },
 ];
 
 export const INITIAL_MESSAGES: ChatMessage[] = [
@@ -78,18 +78,18 @@ export const INITIAL_MESSAGES: ChatMessage[] = [
     id: '1',
     sender: 'ai',
     text: '这么快就回来了？我希望你有值得汇报的事，而不是又在为你的缺乏自律找借口。',
-    timestamp: Date.now() - 100000
+    timestamp: new Date(Date.now() - 100000).toISOString()
   },
   {
     id: '2',
     sender: 'user',
     text: '我今天完成了晨跑。按计划跑了30分钟。',
-    timestamp: Date.now() - 50000
+    timestamp: new Date(Date.now() - 50000).toISOString()
   },
   {
     id: '3',
     sender: 'ai',
     text: '罕见的胜任表现。别自满。一天并不代表习惯。',
-    timestamp: Date.now()
+    timestamp: new Date().toISOString()
   }
 ];

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../App';
+import { useApp } from '../context/AppContext';
 
 const JournalPage: React.FC = () => {
   const { logId } = useParams<{ logId: string }>();
@@ -15,9 +15,9 @@ const JournalPage: React.FC = () => {
     }
   }, [logId, logs]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (logId) {
-      updateLogNote(logId, note);
+      await updateLogNote(logId, note);
     }
     navigate(-1);
   };
@@ -35,17 +35,17 @@ const JournalPage: React.FC = () => {
 
         <section className="flex-1 px-5 py-4 flex items-center justify-center mb-8">
           <div className="w-full bg-white rounded-[24px] shadow-sm p-6 relative flex flex-col" style={{ height: '60vh' }}>
-            <textarea 
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="w-full h-full border-none p-0 text-[17px] text-gray-800 placeholder-gray-400 resize-none bg-transparent leading-relaxed focus:ring-0 focus:outline-none" 
-                placeholder="写点什么记录一下吧..."
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="w-full h-full border-none p-0 text-[17px] text-gray-800 placeholder-gray-400 resize-none bg-transparent leading-relaxed focus:ring-0 focus:outline-none"
+              placeholder="写点什么记录一下吧..."
             ></textarea>
           </div>
         </section>
 
         <div className="px-6 pb-12 pt-2">
-          <button 
+          <button
             onClick={handleSave}
             className="w-full bg-black text-white text-[17px] font-bold py-4 rounded-full shadow-lg active:scale-[0.98] transition-all flex items-center justify-center hover:bg-gray-900"
           >

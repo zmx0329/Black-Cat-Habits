@@ -1,7 +1,6 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { Habit, Log, ChatMessage, HabitType } from './types';
-import { INITIAL_HABITS, INITIAL_LOGS, INITIAL_MESSAGES } from './constants';
+import React from 'react';
+import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { AppProvider, useApp } from './context/AppContext';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -11,120 +10,59 @@ import StatisticsPage from './pages/StatisticsPage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import JournalPage from './pages/JournalPage';
+import AuthPage from './pages/AuthPage';
 
 // Components
 import BottomNav from './components/BottomNav';
 
-interface AppContextType {
-  habits: Habit[];
-  logs: Log[];
-  messages: ChatMessage[];
-  addHabit: (habit: Habit) => void;
-  updateHabit: (habit: Habit) => void;
-  reorderHabits: (newHabits: Habit[]) => void;
-  addLog: (log: Log) => void;
-  deleteLog: (logId: string) => void;
-  updateLogNote: (logId: string, note: string) => void;
-  sendMessage: (text: string) => void;
-}
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useApp();
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F2F2F7]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-black"></div>
+      </div>
+    );
+  }
 
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) throw new Error('useApp must be used within AppProvider');
-  return context;
-};
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [habits, setHabits] = useState<Habit[]>(INITIAL_HABITS);
-  const [logs, setLogs] = useState<Log[]>(INITIAL_LOGS);
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
-
-  const addHabit = (habit: Habit) => {
-    setHabits([...habits, habit]);
-  };
-
-  const updateHabit = (updatedHabit: Habit) => {
-    setHabits(habits.map(h => h.id === updatedHabit.id ? updatedHabit : h));
-  };
-
-  const reorderHabits = (newHabits: Habit[]) => {
-    setHabits(newHabits);
-  };
-
-  const addLog = (log: Log) => {
-    setLogs([log, ...logs]);
-    // Also update habit today count
-    const habit = habits.find(h => h.id === log.habitId);
-    if (habit) {
-       updateHabit({...habit, todayCount: habit.todayCount + 1});
-    }
-  };
-
-  const deleteLog = (logId: string) => {
-     const log = logs.find(l => l.id === logId);
-     if (log) {
-        const habit = habits.find(h => h.id === log.habitId);
-        if (habit) {
-            updateHabit({...habit, todayCount: Math.max(0, habit.todayCount - 1)});
-        }
-     }
-    setLogs(logs.filter(l => l.id !== logId));
-  };
-
-  const updateLogNote = (logId: string, note: string) => {
-    setLogs(logs.map(l => l.id === logId ? { ...l, note } : l));
-  };
-
-  const sendMessage = (text: string) => {
-    const newUserMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: 'user',
-      text,
-      timestamp: Date.now(),
-    };
-    setMessages(prev => [...prev, newUserMsg]);
-    
-    // Simulate AI response
-    setTimeout(() => {
-        const aiMsg: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            sender: 'ai',
-            text: '哼，继续保持。',
-            timestamp: Date.now(),
-        };
-        setMessages(prev => [...prev, aiMsg]);
-    }, 1000);
-  };
-
-  return (
-    <AppContext.Provider value={{ habits, logs, messages, addHabit, updateHabit, reorderHabits, addLog, deleteLog, updateLogNote, sendMessage }}>
-      {children}
-    </AppContext.Provider>
-  );
+  return <>{children}</>;
 };
 
 const Layout: React.FC = () => {
   const location = useLocation();
-  const hideBottomNavRoutes = ['/add', '/edit', '/chat', '/journal'];
+  const { user, loading } = useApp();
+  const hideBottomNavRoutes = ['/add', '/edit', '/journal', '/login'];
   const shouldHideBottomNav = hideBottomNavRoutes.some(route => location.pathname.startsWith(route));
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F2F2F7]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-black"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F2F2F7]">
-        <div className="flex-1 overflow-y-auto no-scrollbar">
-            <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/add" element={<AddEditHabitPage />} />
-                <Route path="/edit/:id" element={<AddEditHabitPage />} />
-                <Route path="/details/:id" element={<HabitDetailsPage />} />
-                <Route path="/statistics" element={<StatisticsPage />} />
-                <Route path="/chat" element={<ChatPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/journal/:logId" element={<JournalPage />} />
-            </Routes>
-        </div>
-        {!shouldHideBottomNav && <BottomNav />}
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+        <Routes>
+          <Route path="/login" element={<AuthPage />} />
+          <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route path="/add" element={<ProtectedRoute><AddEditHabitPage /></ProtectedRoute>} />
+          <Route path="/edit/:id" element={<ProtectedRoute><AddEditHabitPage /></ProtectedRoute>} />
+          <Route path="/details/:id" element={<ProtectedRoute><HabitDetailsPage /></ProtectedRoute>} />
+          <Route path="/statistics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/journal/:logId" element={<ProtectedRoute><JournalPage /></ProtectedRoute>} />
+        </Routes>
+      </div>
+      {user && !shouldHideBottomNav && <BottomNav />}
     </div>
   );
 };
