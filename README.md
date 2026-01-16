@@ -18,3 +18,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/1rKyNksOveDdW7qYaK1J84L
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Deepseek remark (optional)
+- Set `VITE_DEEPSEEK_API_KEY` in `.env.local`
+- Optional: override endpoint with `VITE_DEEPSEEK_API_URL` (default `https://api.deepseek.com/v1/chat/completions`)
+- The home top “黑主任”话术会基于当天打卡数据自动生成

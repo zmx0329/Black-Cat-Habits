@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Habit, HabitType } from '../types';
 import { IMAGES } from '../constants';
+import { fetchDailyRemark } from '../services/deepseek';
 
 const HomePage: React.FC = () => {
   const { habits, addLog, deleteLog, reorderHabits, logs } = useApp();
@@ -11,6 +12,9 @@ const HomePage: React.FC = () => {
   const [currentLogId, setCurrentLogId] = useState<string | null>(null);
   const [isSorting, setIsSorting] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [remark, setRemark] = useState('');
+  const [remarkLoading, setRemarkLoading] = useState(false);
+  const lastSignatureRef = useRef<string>('');
 
   // Drag and Drop State
   const dragItem = useRef<number | null>(null);
@@ -32,6 +36,7 @@ const HomePage: React.FC = () => {
     }
 
     setIsChecking(false);
+    triggerRemark();
   };
 
   const handleCardClick = (habit: Habit) => {
@@ -105,6 +110,35 @@ const HomePage: React.FC = () => {
     setIsSorting(!isSorting);
   };
 
+  // Generate cat remark via Deepseek
+  const triggerRemark = () => {
+    // Build a lightweight signature to avoid spamming API
+    const signature = `${habits.length}-${logs.length}-${habits.map(h => `${h.id}:${h.todayCount || 0}`).join('|')}`;
+    if (!habits.length && !logs.length) return;
+    if (signature === lastSignatureRef.current && !remarkLoading) return;
+    lastSignatureRef.current = signature;
+
+    setRemark('');
+    setRemarkLoading(true);
+    fetchDailyRemark(habits, logs, (text) => {
+      setRemark(text);
+      setRemarkLoading(false);
+    })
+      .then(text => {
+        setRemark(text);
+        setRemarkLoading(false);
+      })
+      .catch(error => {
+        console.warn('Deepseek remark failed:', error);
+        setRemarkLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    triggerRemark();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [habits, logs]);
+
   return (
     <div className="pb-24 bg-[#F2F2F7] min-h-screen relative">
 
@@ -117,8 +151,10 @@ const HomePage: React.FC = () => {
           <div className="relative bg-white border-2 border-black rounded-[15px] p-4 text-sm font-medium leading-snug w-48 shadow-sm ml-3
             before:content-[''] before:absolute before:left-[-12px] before:top-1/2 before:-translate-y-1/2 before:border-r-[12px] before:border-r-black before:border-y-[10px] before:border-y-transparent
             after:content-[''] after:absolute after:left-[-8px] after:top-1/2 after:-translate-y-1/2 after:border-r-[9px] after:border-r-white after:border-y-[7px] after:border-y-transparent
-          ">
-            <p>又是平庸的一天，我猜...</p>
+          translate-x-3">
+            <p className={remarkLoading && !remark ? 'opacity-50' : ''}>
+              {remark || (remarkLoading ? '生成中…' : '今日还没开腔')}
+            </p>
           </div>
         </div>
       </header>
