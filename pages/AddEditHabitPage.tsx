@@ -158,7 +158,10 @@ const AddEditHabitPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full bg-[#7676801F] border-none focus:ring-0 rounded-xl py-3 px-4 text-gray-800 placeholder-gray-400 transition-colors"
               id="habitName"
-              placeholder="例如：晨跑"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               type="text"
             />
           </div>

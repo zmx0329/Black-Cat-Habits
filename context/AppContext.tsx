@@ -47,17 +47,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         timestamp: item.timestamp || item.created_at || new Date().toISOString()
     });
 
+    const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        const timeoutPromise = new Promise<T>((_, reject) => {
+            timeoutId = setTimeout(() => {
+                reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+        });
+        try {
+            return await Promise.race([promise, timeoutPromise]);
+        } finally {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+        }
+    };
+
     // Check auth state on mount
     useEffect(() => {
         let mounted = true;
 
-        // Shorter timeout since we're not querying database
+        // Safety timeout to avoid stuck loading on slow networks
         const timer = setTimeout(() => {
             if (mounted) {
                 console.warn("⏰ Loading timed out");
                 setLoading(false);
             }
-        }, 2000);
+        }, 10000);
 
         const checkAuth = async () => {
             try {
@@ -181,29 +197,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Fetch habits
         console.log('📊 Fetching habits...');
-        const { data: habitsData, error: habitsError } = await supabase
-            .from('habits')
-            .select('*')
-            .eq('user_id', userId)
-            .order('display_order', { ascending: true });
+        let { data: habitsData, error: habitsError } = await withTimeout(
+            supabase
+                .from('habits')
+                .select('*')
+                .eq('user_id', userId)
+                .order('display_order', { ascending: true }),
+            8000,
+            'Fetch habits'
+        );
+
+        if (isMissingColumn(habitsError, 'display_order')) {
+            ({ data: habitsData, error: habitsError } = await withTimeout(
+                supabase
+                    .from('habits')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: true }),
+                8000,
+                'Fetch habits (created_at fallback)'
+            ));
+        }
 
         if (habitsError) console.error('❌ Habits fetch error:', habitsError);
         else console.log('✅ Habits fetched:', habitsData?.length || 0);
 
         // Fetch logs
         console.log('📊 Fetching logs...');
-        let { data: logsData, error: logsError } = await supabase
-            .from('logs')
-            .select('*')
-            .eq('user_id', userId)
-            .order('timestamp', { ascending: false });
-
-        if (isMissingColumn(logsError, 'timestamp')) {
-            ({ data: logsData, error: logsError } = await supabase
+        let { data: logsData, error: logsError } = await withTimeout(
+            supabase
                 .from('logs')
                 .select('*')
                 .eq('user_id', userId)
-                .order('created_at', { ascending: false }));
+                .order('timestamp', { ascending: false }),
+            8000,
+            'Fetch logs'
+        );
+
+        if (isMissingColumn(logsError, 'timestamp')) {
+            ({ data: logsData, error: logsError } = await withTimeout(
+                supabase
+                    .from('logs')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false }),
+                8000,
+                'Fetch logs (created_at fallback)'
+            ));
         }
 
         if (logsError) console.error('❌ Logs fetch error:', logsError);
@@ -211,18 +251,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Fetch messages
         console.log('📊 Fetching messages...');
-        let { data: messagesData, error: messagesError } = await supabase
-            .from('chat_messages')
-            .select('*')
-            .eq('user_id', userId)
-            .order('timestamp', { ascending: true });
-
-        if (isMissingColumn(messagesError, 'timestamp')) {
-            ({ data: messagesData, error: messagesError } = await supabase
+        let { data: messagesData, error: messagesError } = await withTimeout(
+            supabase
                 .from('chat_messages')
                 .select('*')
                 .eq('user_id', userId)
-                .order('created_at', { ascending: true }));
+                .order('timestamp', { ascending: true }),
+            8000,
+            'Fetch messages'
+        );
+
+        if (isMissingColumn(messagesError, 'timestamp')) {
+            ({ data: messagesData, error: messagesError } = await withTimeout(
+                supabase
+                    .from('chat_messages')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: true }),
+                8000,
+                'Fetch messages (created_at fallback)'
+            ));
         }
 
         if (messagesError) console.error('❌ Messages fetch error:', messagesError);

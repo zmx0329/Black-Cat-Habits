@@ -46,12 +46,15 @@ const StatisticsPage: React.FC = () => {
             date.getFullYear() === selectedDate.getFullYear();
     };
 
-    // Get logs for a specific date
+    const toLocalDateKey = (date: Date) =>
+        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+    // Get logs for a specific date (local time to avoid timezone shift)
     const getLogsForDate = (date: Date) => {
-        const dateStr = date.toISOString().split('T')[0];
+        const dateKey = toLocalDateKey(date);
         return logs.filter(log => {
-            const logDate = new Date(log.timestamp).toISOString().split('T')[0];
-            return logDate === dateStr;
+            const logDate = new Date(log.timestamp);
+            return toLocalDateKey(logDate) === dateKey;
         });
     };
 
