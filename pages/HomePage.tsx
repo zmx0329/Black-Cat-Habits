@@ -162,9 +162,11 @@ const HomePage: React.FC = () => {
                 <h2 className="font-bold text-[15px] leading-tight text-gray-900">{habit.name}</h2>
                 <span className="text-[10px] text-gray-500 font-medium">今日 {habit.todayCount} 次，本周 {habit.thisWeekDays || 0} 天</span>
               </div>
-              <div className="mb-3 text-[10px] text-gray-400">
-                目标：今日 {habit.daily_goal} 次，本周 {habit.frequency?.length || 0} 天
-              </div>
+              {habit.type === HabitType.GOOD && (
+                <div className="mb-3 text-[10px] text-gray-400">
+                  目标：今日 {habit.daily_goal} 次，本周 {habit.frequency?.length || 0} 天
+                </div>
+              )}
               <div className="flex items-center gap-1.5 mt-auto pr-6">
                 <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0 ${habit.type === HabitType.GOOD ? 'text-[#15803d] bg-[#dcfce7]' : 'text-[#b91c1c] bg-[#fee2e2]'
                   }`}>

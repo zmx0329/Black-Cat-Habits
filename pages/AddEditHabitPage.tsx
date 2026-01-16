@@ -45,6 +45,16 @@ const AddEditHabitPage: React.FC = () => {
     }
   }, [id, habits, isEdit]);
 
+  useEffect(() => {
+    if (formData.type === HabitType.BAD) {
+      setFormData(prev => ({
+        ...prev,
+        frequency: [],
+        daily_goal: 0
+      }));
+    }
+  }, [formData.type]);
+
   // Scroll to initial position when picker opens
   useEffect(() => {
     if (showTimePicker) {
@@ -76,8 +86,8 @@ const AddEditHabitPage: React.FC = () => {
           name: formData.name,
           type: formData.type || HabitType.GOOD,
           description: formData.description || '',
-          frequency: formData.frequency || [1, 2, 3, 4, 5],
-          daily_goal: formData.daily_goal || 1,
+          frequency: formData.type === HabitType.BAD ? [] : (formData.frequency || [1, 2, 3, 4, 5]),
+          daily_goal: formData.type === HabitType.BAD ? 0 : (formData.daily_goal || 1),
           reminders: formData.reminders || [],
           streak: 0,
         });
@@ -192,53 +202,55 @@ const AddEditHabitPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-2">
-            <h2 className="text-lg font-bold mb-4">计划</h2>
-            <div className="space-y-5">
-              <div data-purpose="frequency-grid">
-                <label className="block text-base font-bold mb-2">频率</label>
-                <div className="grid grid-cols-7 gap-1.5">
-                  {days.map((day, index) => {
-                    const isSelected = formData.frequency?.includes(index);
-                    return (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => toggleDay(index)}
-                        className={`aspect-square rounded-xl flex items-center justify-center text-xs font-bold shadow-sm transition-all ${isSelected ? 'bg-[#38393D] text-white' : 'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'
-                          }`}
-                      >
-                        {day}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div data-purpose="daily-times">
-                <label className="block text-base font-bold mb-2">每日次数</label>
-                <div className="bg-[#7676801F] rounded-xl p-1.5 flex items-center justify-between h-14">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, daily_goal: Math.max(1, (formData.daily_goal || 1) - 1) })}
-                    className="w-12 h-full bg-white rounded-[9px] shadow-sm flex items-center justify-center text-gray-600 active:scale-95 transition-transform"
-                  >
-                    <span className="material-symbols-outlined text-xl">remove</span>
-                  </button>
-                  <div className="flex-1 text-center flex items-center justify-center">
-                    <span className="text-xl font-bold text-gray-900 leading-none">{formData.daily_goal}</span>
+          {formData.type !== HabitType.BAD && (
+            <div className="pt-2">
+              <h2 className="text-lg font-bold mb-4">计划</h2>
+              <div className="space-y-5">
+                <div data-purpose="frequency-grid">
+                  <label className="block text-base font-bold mb-2">频率</label>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {days.map((day, index) => {
+                      const isSelected = formData.frequency?.includes(index);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => toggleDay(index)}
+                          className={`aspect-square rounded-xl flex items-center justify-center text-xs font-bold shadow-sm transition-all ${isSelected ? 'bg-[#38393D] text-white' : 'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'
+                            }`}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, daily_goal: (formData.daily_goal || 1) + 1 })}
-                    className="w-12 h-full bg-white rounded-[9px] shadow-sm flex items-center justify-center text-black active:scale-95 transition-transform"
-                  >
-                    <span className="material-symbols-outlined text-xl">add</span>
-                  </button>
+                </div>
+
+                <div data-purpose="daily-times">
+                  <label className="block text-base font-bold mb-2">每日次数</label>
+                  <div className="bg-[#7676801F] rounded-xl p-1.5 flex items-center justify-between h-14">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, daily_goal: Math.max(1, (formData.daily_goal || 1) - 1) })}
+                      className="w-12 h-full bg-white rounded-[9px] shadow-sm flex items-center justify-center text-gray-600 active:scale-95 transition-transform"
+                    >
+                      <span className="material-symbols-outlined text-xl">remove</span>
+                    </button>
+                    <div className="flex-1 text-center flex items-center justify-center">
+                      <span className="text-xl font-bold text-gray-900 leading-none">{formData.daily_goal}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, daily_goal: (formData.daily_goal || 1) + 1 })}
+                      className="w-12 h-full bg-white rounded-[9px] shadow-sm flex items-center justify-center text-black active:scale-95 transition-transform"
+                    >
+                      <span className="material-symbols-outlined text-xl">add</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div data-purpose="input-group">
             <label className="block text-base font-bold mb-2" htmlFor="description">描述（选填）</label>
