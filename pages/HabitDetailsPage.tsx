@@ -17,9 +17,13 @@ const HabitDetailsPage: React.FC = () => {
   }, [logs, id]);
 
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
-  const [detailRemark, setDetailRemark] = useState('...');
+  const [detailRemark, setDetailRemark] = useState('');
   const [detailRemarkLoading, setDetailRemarkLoading] = useState(false);
   const detailSignatureRef = useRef<string>('');
+  const detailStreamRef = useRef('');
+  const detailDisplayRef = useRef('');
+  const detailDoneRef = useRef(false);
+  const detailTimerRef = useRef<number | null>(null);
 
   if (!habit) return <div>Habit not found</div>;
 
@@ -65,6 +69,45 @@ const HabitDetailsPage: React.FC = () => {
     return `${date.getMonth() + 1}月${date.getDate()}日 ${timeStr}`;
   };
 
+  const startTypewriter = (
+    streamRef: React.MutableRefObject<string>,
+    displayRef: React.MutableRefObject<string>,
+    doneRef: React.MutableRefObject<boolean>,
+    setText: React.Dispatch<React.SetStateAction<string>>,
+    timerRef: React.MutableRefObject<number | null>
+  ) => {
+    if (timerRef.current !== null) return;
+    timerRef.current = window.setInterval(() => {
+      if (displayRef.current.length < streamRef.current.length) {
+        const nextChar = streamRef.current.charAt(displayRef.current.length);
+        displayRef.current += nextChar;
+        setText(displayRef.current);
+        return;
+      }
+      if (doneRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }, 30);
+  };
+
+  const resetTypewriter = (
+    streamRef: React.MutableRefObject<string>,
+    displayRef: React.MutableRefObject<string>,
+    doneRef: React.MutableRefObject<boolean>,
+    setText: React.Dispatch<React.SetStateAction<string>>,
+    timerRef: React.MutableRefObject<number | null>
+  ) => {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    streamRef.current = '';
+    displayRef.current = '';
+    doneRef.current = false;
+    setText('');
+  };
+
   useEffect(() => {
     if (!habit) return;
 
@@ -103,7 +146,7 @@ const HabitDetailsPage: React.FC = () => {
       ? formatDate(completedLogs[0].timestamp)
       : '暂无';
 
-    setDetailRemark('...');
+    resetTypewriter(detailStreamRef, detailDisplayRef, detailDoneRef, setDetailRemark, detailTimerRef);
     setDetailRemarkLoading(true);
 
     const timeout = new Promise<string>((_, reject) =>
@@ -119,19 +162,31 @@ const HabitDetailsPage: React.FC = () => {
         activeDays,
         daysSinceStart,
         lastCheckin
+      }, (text) => {
+        detailStreamRef.current = text;
+        startTypewriter(detailStreamRef, detailDisplayRef, detailDoneRef, setDetailRemark, detailTimerRef);
       }),
       timeout
     ])
       .then(text => {
-        setDetailRemark(text);
+        detailStreamRef.current = text;
+        detailDoneRef.current = true;
+        startTypewriter(detailStreamRef, detailDisplayRef, detailDoneRef, setDetailRemark, detailTimerRef);
         setDetailRemarkLoading(false);
       })
       .catch(err => {
         console.warn('Habit detail remark failed:', err);
-        setDetailRemark('数据跑丢了，暂时算你过关。');
+        detailStreamRef.current = '';
+        detailDoneRef.current = true;
         setDetailRemarkLoading(false);
       });
   }, [habit, habitLogs]);
+
+  useEffect(() => {
+    return () => {
+      if (detailTimerRef.current !== null) clearInterval(detailTimerRef.current);
+    };
+  }, []);
 
   // Heatmap Logic: Last 6 months
   const renderHeatmap = () => {

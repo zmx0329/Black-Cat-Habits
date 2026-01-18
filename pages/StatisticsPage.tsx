@@ -11,6 +11,10 @@ const StatisticsPage: React.FC = () => {
     const [dayRemark, setDayRemark] = useState<string>('');
     const [dayRemarkLoading, setDayRemarkLoading] = useState(false);
     const dayRemarkSignatureRef = useRef<string>('');
+    const dayStreamRef = useRef('');
+    const dayDisplayRef = useRef('');
+    const dayDoneRef = useRef(false);
+    const dayTimerRef = useRef<number | null>(null);
 
     // Get days in month
     const getDaysInMonth = (date: Date) => {
@@ -166,6 +170,45 @@ const StatisticsPage: React.FC = () => {
         });
     }, [selectedDate, logs, habits]);
 
+    const startTypewriter = (
+        streamRef: React.MutableRefObject<string>,
+        displayRef: React.MutableRefObject<string>,
+        doneRef: React.MutableRefObject<boolean>,
+        setText: React.Dispatch<React.SetStateAction<string>>,
+        timerRef: React.MutableRefObject<number | null>
+    ) => {
+        if (timerRef.current !== null) return;
+        timerRef.current = window.setInterval(() => {
+            if (displayRef.current.length < streamRef.current.length) {
+                const nextChar = streamRef.current.charAt(displayRef.current.length);
+                displayRef.current += nextChar;
+                setText(displayRef.current);
+                return;
+            }
+            if (doneRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+        }, 30);
+    };
+
+    const resetTypewriter = (
+        streamRef: React.MutableRefObject<string>,
+        displayRef: React.MutableRefObject<string>,
+        doneRef: React.MutableRefObject<boolean>,
+        setText: React.Dispatch<React.SetStateAction<string>>,
+        timerRef: React.MutableRefObject<number | null>
+    ) => {
+        if (timerRef.current !== null) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        streamRef.current = '';
+        displayRef.current = '';
+        doneRef.current = false;
+        setText('');
+    };
+
     useEffect(() => {
         const dateLabel = formatSelectedDate();
         const summary = dailyHabitStatus.reduce(
@@ -197,32 +240,39 @@ const StatisticsPage: React.FC = () => {
             .map(item => `${item.name}-${item.type}-${item.current}-${item.target}-${item.status}`)
             .join('|');
         const signature = `${dateLabel}-${dailyHabitStatus.length}-${JSON.stringify(summary)}-${detailSignature}`;
-        const fallbackRemark = summary.completedHabits === summary.scheduledHabits && summary.scheduledHabits > 0
-            ? '该做的都做了，今天算你过关。'
-            : summary.scheduledHabits === 0 && summary.badTriggered === 0
-                ? '今天没安排，也别自我感动。'
-                : '该做没做，该忍没忍。解释留着给未来。';
-
         if (dayRemarkSignatureRef.current === signature && !dayRemarkLoading) return;
         dayRemarkSignatureRef.current = signature;
 
-        setDayRemark(fallbackRemark);
+        resetTypewriter(dayStreamRef, dayDisplayRef, dayDoneRef, setDayRemark, dayTimerRef);
         setDayRemarkLoading(true);
 
         fetchStatsDailyRemark({
             dateLabel,
             summary,
             details: dailyHabitStatus
+        }, (text) => {
+            dayStreamRef.current = text;
+            startTypewriter(dayStreamRef, dayDisplayRef, dayDoneRef, setDayRemark, dayTimerRef);
         })
             .then(text => {
-                setDayRemark(text);
+                dayStreamRef.current = text;
+                dayDoneRef.current = true;
+                startTypewriter(dayStreamRef, dayDisplayRef, dayDoneRef, setDayRemark, dayTimerRef);
                 setDayRemarkLoading(false);
             })
             .catch(err => {
                 console.warn('Stats day remark failed:', err);
+                dayStreamRef.current = '';
+                dayDoneRef.current = true;
                 setDayRemarkLoading(false);
             });
     }, [dailyHabitStatus]);
+
+    useEffect(() => {
+        return () => {
+            if (dayTimerRef.current !== null) clearInterval(dayTimerRef.current);
+        };
+    }, []);
 
     // Generate calendar days
     const daysInMonth = getDaysInMonth(currentMonth);
@@ -296,7 +346,7 @@ const StatisticsPage: React.FC = () => {
                      after:content-[''] after:absolute after:left-[-8px] after:top-1/2 after:-translate-y-1/2 after:border-r-[9px] after:border-r-white after:border-y-[7px] after:border-y-transparent
                 ">
                         <p className={`text-lg leading-tight font-medium text-black ${dayRemarkLoading ? 'opacity-70' : ''}`}>
-                            {dayRemark || '...'}
+                            {dayRemark}
                         </p>
                     </div>
                 </div>

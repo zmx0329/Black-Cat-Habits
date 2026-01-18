@@ -17,6 +17,14 @@ const HomePage: React.FC = () => {
   const lastSignatureRef = useRef<string>('');
   const [checkinRemark, setCheckinRemark] = useState('');
   const [checkinRemarkLoading, setCheckinRemarkLoading] = useState(false);
+  const remarkStreamRef = useRef('');
+  const remarkDisplayRef = useRef('');
+  const remarkDoneRef = useRef(false);
+  const remarkTimerRef = useRef<number | null>(null);
+  const checkinStreamRef = useRef('');
+  const checkinDisplayRef = useRef('');
+  const checkinDoneRef = useRef(false);
+  const checkinTimerRef = useRef<number | null>(null);
 
   // Drag and Drop State
   const dragItem = useRef<number | null>(null);
@@ -114,6 +122,45 @@ const HomePage: React.FC = () => {
     setIsSorting(!isSorting);
   };
 
+  const startTypewriter = (
+    streamRef: React.MutableRefObject<string>,
+    displayRef: React.MutableRefObject<string>,
+    doneRef: React.MutableRefObject<boolean>,
+    setText: React.Dispatch<React.SetStateAction<string>>,
+    timerRef: React.MutableRefObject<number | null>
+  ) => {
+    if (timerRef.current !== null) return;
+    timerRef.current = window.setInterval(() => {
+      if (displayRef.current.length < streamRef.current.length) {
+        const nextChar = streamRef.current.charAt(displayRef.current.length);
+        displayRef.current += nextChar;
+        setText(displayRef.current);
+        return;
+      }
+      if (doneRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }, 30);
+  };
+
+  const resetTypewriter = (
+    streamRef: React.MutableRefObject<string>,
+    displayRef: React.MutableRefObject<string>,
+    doneRef: React.MutableRefObject<boolean>,
+    setText: React.Dispatch<React.SetStateAction<string>>,
+    timerRef: React.MutableRefObject<number | null>
+  ) => {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    streamRef.current = '';
+    displayRef.current = '';
+    doneRef.current = false;
+    setText('');
+  };
+
   // Generate cat remark via Deepseek
   const triggerRemark = () => {
     // Build a lightweight signature to avoid spamming API
@@ -122,20 +169,24 @@ const HomePage: React.FC = () => {
     if (signature === lastSignatureRef.current && !remarkLoading) return;
     lastSignatureRef.current = signature;
 
-    setRemark('');
+    resetTypewriter(remarkStreamRef, remarkDisplayRef, remarkDoneRef, setRemark, remarkTimerRef);
     setRemarkLoading(true);
     fetchDailyRemark(habits, logs, (text) => {
-      setRemark(text);
-      setRemarkLoading(false);
+      remarkStreamRef.current = text;
+      startTypewriter(remarkStreamRef, remarkDisplayRef, remarkDoneRef, setRemark, remarkTimerRef);
     })
       .then(text => {
-        setRemark(text);
+        remarkStreamRef.current = text;
+        remarkDoneRef.current = true;
+        startTypewriter(remarkStreamRef, remarkDisplayRef, remarkDoneRef, setRemark, remarkTimerRef);
         setRemarkLoading(false);
       })
-        .catch(error => {
-          console.warn('Deepseek remark failed:', error);
-          setRemarkLoading(false);
-        });
+      .catch(error => {
+        console.warn('Deepseek remark failed:', error);
+        remarkStreamRef.current = '';
+        remarkDoneRef.current = true;
+        setRemarkLoading(false);
+      });
   };
 
   const triggerCheckinRemark = (habit: Habit, newLog?: { id: string } | null) => {
@@ -185,7 +236,7 @@ const HomePage: React.FC = () => {
       dailyStatus = '刚达标';
     }
 
-    setCheckinRemark('');
+    resetTypewriter(checkinStreamRef, checkinDisplayRef, checkinDoneRef, setCheckinRemark, checkinTimerRef);
     setCheckinRemarkLoading(true);
 
     const timeout = new Promise<string>((_, reject) =>
@@ -201,16 +252,22 @@ const HomePage: React.FC = () => {
         todayTarget,
         todayCurrent,
         dailyStatus
+      }, (text) => {
+        checkinStreamRef.current = text;
+        startTypewriter(checkinStreamRef, checkinDisplayRef, checkinDoneRef, setCheckinRemark, checkinTimerRef);
       }),
       timeout
     ])
       .then(text => {
-        setCheckinRemark(text);
+        checkinStreamRef.current = text;
+        checkinDoneRef.current = true;
+        startTypewriter(checkinStreamRef, checkinDisplayRef, checkinDoneRef, setCheckinRemark, checkinTimerRef);
         setCheckinRemarkLoading(false);
       })
       .catch(err => {
         console.warn('Check-in remark failed:', err);
-        setCheckinRemark('线路挤爆了，先记着这次，待会再喷你。');
+        checkinStreamRef.current = '';
+        checkinDoneRef.current = true;
         setCheckinRemarkLoading(false);
       });
   };
@@ -219,6 +276,13 @@ const HomePage: React.FC = () => {
     triggerRemark();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habits, logs]);
+
+  useEffect(() => {
+    return () => {
+      if (remarkTimerRef.current !== null) clearInterval(remarkTimerRef.current);
+      if (checkinTimerRef.current !== null) clearInterval(checkinTimerRef.current);
+    };
+  }, []);
 
   return (
     <div className="pb-24 bg-[#F2F2F7] min-h-screen relative">
@@ -233,9 +297,7 @@ const HomePage: React.FC = () => {
             before:content-[''] before:absolute before:left-[-12px] before:top-1/2 before:-translate-y-1/2 before:border-r-[12px] before:border-r-black before:border-y-[10px] before:border-y-transparent
             after:content-[''] after:absolute after:left-[-8px] after:top-1/2 after:-translate-y-1/2 after:border-r-[9px] after:border-r-white after:border-y-[7px] after:border-y-transparent
           translate-x-3">
-            <p className={remarkLoading && !remark ? 'opacity-50' : ''}>
-              {remark || (remarkLoading ? '生成中…' : '今日还没开腔')}
-            </p>
+            <p className={remarkLoading ? 'opacity-70' : ''}>{remark}</p>
           </div>
         </div>
       </header>
@@ -335,8 +397,8 @@ const HomePage: React.FC = () => {
                              before:content-[''] before:absolute before:-top-3 before:left-1/2 before:-translate-x-1/2 before:border-b-[12px] before:border-b-black before:border-x-[10px] before:border-x-transparent
                              after:content-[''] after:absolute after:-top-2 after:left-1/2 after:-translate-x-1/2 after:border-b-[9px] after:border-b-white after:border-x-[7px] after:border-x-transparent
                         ">
-                  <p className="text-sm font-bold text-gray-800 leading-relaxed">
-                    {checkinRemark || (checkinRemarkLoading ? '生成中…' : '...')}
+                  <p className={`text-sm font-bold text-gray-800 leading-relaxed ${checkinRemarkLoading ? 'opacity-70' : ''}`}>
+                    {checkinRemark}
                   </p>
                 </div>
               </div>
