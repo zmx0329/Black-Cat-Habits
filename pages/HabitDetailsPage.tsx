@@ -1,19 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { HabitType } from '../types';
 import { IMAGES } from '../constants';
+import { fetchHabitDetailRemark } from '../services/deepseek';
 
 const HabitDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { habits, logs, addLog, deleteLog, deleteHabit } = useApp();
   const habit = habits.find(h => h.id === id);
-  const habitLogs = logs.filter(l => l.habit_id === id).sort((a, b) =>
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+  const habitLogs = useMemo(() => {
+    return logs
+      .filter(l => l.habit_id === id)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [logs, id]);
 
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+  const [detailRemark, setDetailRemark] = useState('...');
+  const [detailRemarkLoading, setDetailRemarkLoading] = useState(false);
+  const detailSignatureRef = useRef<string>('');
 
   if (!habit) return <div>Habit not found</div>;
 
@@ -58,6 +64,74 @@ const HabitDetailsPage: React.FC = () => {
     if (isYesterday) return `昨天 ${timeStr}`;
     return `${date.getMonth() + 1}月${date.getDate()}日 ${timeStr}`;
   };
+
+  useEffect(() => {
+    if (!habit) return;
+
+    const signature = `${habit.id}-${habitLogs.length}-${habitLogs[0]?.timestamp || ''}`;
+    if (detailSignatureRef.current === signature && !detailRemarkLoading) return;
+    detailSignatureRef.current = signature;
+
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const weekStart = new Date(now);
+    weekStart.setDate(diff);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const completedLogs = habitLogs.filter(l => l.status === 'completed');
+    const weekLogs = completedLogs.filter(l => new Date(l.timestamp) >= weekStart);
+    const weekDoneDays = new Set(
+      weekLogs.map(l => {
+        const d = new Date(l.timestamp);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      })
+    ).size;
+
+    const activeDays = new Set(
+      completedLogs.map(l => {
+        const d = new Date(l.timestamp);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      })
+    ).size;
+
+    const firstLog = completedLogs[completedLogs.length - 1];
+    const daysSinceStart = firstLog
+      ? Math.max(1, Math.ceil((now.getTime() - new Date(firstLog.timestamp).getTime()) / (1000 * 60 * 60 * 24)))
+      : 0;
+    const lastCheckin = completedLogs[0]?.timestamp
+      ? formatDate(completedLogs[0].timestamp)
+      : '暂无';
+
+    setDetailRemark('...');
+    setDetailRemarkLoading(true);
+
+    const timeout = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error('habit detail remark timeout')), 8000)
+    );
+
+    Promise.race([
+      fetchHabitDetailRemark({
+        habit,
+        weekCount: weekLogs.length,
+        weekDoneDays,
+        totalCount: completedLogs.length,
+        activeDays,
+        daysSinceStart,
+        lastCheckin
+      }),
+      timeout
+    ])
+      .then(text => {
+        setDetailRemark(text);
+        setDetailRemarkLoading(false);
+      })
+      .catch(err => {
+        console.warn('Habit detail remark failed:', err);
+        setDetailRemark('数据跑丢了，暂时算你过关。');
+        setDetailRemarkLoading(false);
+      });
+  }, [habit, habitLogs]);
 
   // Heatmap Logic: Last 6 months
   const renderHeatmap = () => {
@@ -206,8 +280,8 @@ const HabitDetailsPage: React.FC = () => {
               <div className="relative bg-white border-2 border-black rounded-[16px] p-3 mb-4 ml-3 flex-grow shadow-sm
                 before:content-[''] before:absolute before:left-[-8px] before:top-1/2 before:-translate-y-1/2 before:w-4 before:h-4 before:bg-white before:border-l-[2px] before:border-l-black before:border-b-[2px] before:border-b-black before:rotate-45
               ">
-                <p className="text-sm font-medium leading-snug text-black relative z-10">
-                  五天了？别得意。人类，坚持才是关键。
+                <p className={`text-sm font-medium leading-snug text-black relative z-10 ${detailRemarkLoading ? 'opacity-70' : ''}`}>
+                  {detailRemark}
                 </p>
               </div>
             </div>

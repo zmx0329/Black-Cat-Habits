@@ -207,3 +207,70 @@ export async function fetchCheckinRemark(input: {
   }
   return content.slice(0, 60);
 }
+
+export async function fetchHabitDetailRemark(input: {
+  habit: Habit;
+  weekCount: number;
+  weekDoneDays: number;
+  totalCount: number;
+  activeDays: number;
+  daysSinceStart: number;
+  lastCheckin: string;
+}): Promise<string> {
+  const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
+  const apiUrl = import.meta.env.VITE_DEEPSEEK_API_URL || DEFAULT_API_URL;
+  if (!apiKey) throw new Error('Missing VITE_DEEPSEEK_API_KEY');
+
+  const consistency = input.daysSinceStart > 0
+    ? Math.round((input.activeDays / input.daysSinceStart) * 100)
+    : 0;
+
+  const payload = {
+    model: 'deepseek-chat',
+    temperature: 0.6,
+    max_tokens: 160,
+    messages: [
+      {
+        role: 'system',
+        content:
+          '你是毒舌但公正的教官。只点评当前习惯，结合本周+历史表现，做一句话评价他的完成表现。好就表扬鼓励，不好就批评，毒舌讽刺，结合习惯强调后果（对健康，对人生，对目标的后果）。中文，不加引号，40字左右。'
+      },
+      {
+        role: 'user',
+        content: `
+习惯名称: ${input.habit.name}
+习惯类型: ${input.habit.type}
+描述: ${input.habit.description || '无'}
+本周打卡次数: ${input.weekCount}
+本周打卡天数: ${input.weekDoneDays}
+历史打卡总次数: ${input.totalCount}
+历史活跃天数: ${input.activeDays}
+坚持天数(从首次记录至今): ${input.daysSinceStart}
+历史一致性: ${consistency}%
+最近一次打卡: ${input.lastCheckin}
+`
+      }
+    ]
+  };
+
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Deepseek habit detail failed: ${res.status} ${text}`);
+  }
+
+  const data: DeepseekResponse = await res.json();
+  const content = data.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error('Deepseek habit detail response empty');
+  }
+  return content;
+}
