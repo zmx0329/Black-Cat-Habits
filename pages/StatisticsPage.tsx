@@ -1,12 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { HabitType } from '../types';
 import { IMAGES } from '../constants';
+import { fetchStatsDailyRemark } from '../services/deepseek';
 
 const StatisticsPage: React.FC = () => {
     const { logs, habits } = useApp();
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+    const [dayRemark, setDayRemark] = useState<string>('');
+    const [dayRemarkLoading, setDayRemarkLoading] = useState(false);
+    const dayRemarkSignatureRef = useRef<string>('');
 
     // Get days in month
     const getDaysInMonth = (date: Date) => {
@@ -114,6 +118,112 @@ const StatisticsPage: React.FC = () => {
         }).sort((a, b) => a.time.localeCompare(b.time));
     }, [selectedDate, logs, habits]);
 
+    const dailyHabitStatus = useMemo(() => {
+        const dateKey = toLocalDateKey(selectedDate);
+        const dayIndex = selectedDate.getDay();
+        const counts = new Map<string, number>();
+
+        logs.forEach(log => {
+            if (toLocalDateKey(new Date(log.timestamp)) === dateKey && log.status === 'completed') {
+                counts.set(log.habit_id, (counts.get(log.habit_id) || 0) + 1);
+            }
+        });
+
+        return habits.map(habit => {
+            const current = counts.get(habit.id) || 0;
+            if (habit.type === HabitType.BAD) {
+                return {
+                    name: habit.name,
+                    type: habit.type,
+                    target: 0,
+                    current,
+                    status: current > 0 ? '已触发' : '未触发',
+                    description: habit.description
+                };
+            }
+
+            const isScheduled = Array.isArray(habit.frequency) ? habit.frequency.includes(dayIndex) : true;
+            const target = isScheduled ? (habit.daily_goal || 0) : 0;
+            let status = '未安排';
+            if (isScheduled && target > 0) {
+                if (current >= target) {
+                    status = '已完成';
+                } else if (current === 0) {
+                    status = '未开始';
+                } else {
+                    status = '未完成';
+                }
+            }
+
+            return {
+                name: habit.name,
+                type: habit.type,
+                target,
+                current,
+                status,
+                description: habit.description
+            };
+        });
+    }, [selectedDate, logs, habits]);
+
+    useEffect(() => {
+        const dateLabel = formatSelectedDate();
+        const summary = dailyHabitStatus.reduce(
+            (acc, item) => {
+                acc.totalHabits += 1;
+                if (item.type === HabitType.BAD) {
+                    if (item.current > 0) acc.badTriggered += 1;
+                    return acc;
+                }
+                if (item.target > 0) {
+                    acc.scheduledHabits += 1;
+                    if (item.status === '已完成') acc.completedHabits += 1;
+                    if (item.status === '未完成') acc.pendingHabits += 1;
+                    if (item.status === '未开始') acc.missedHabits += 1;
+                }
+                return acc;
+            },
+            {
+                totalHabits: 0,
+                scheduledHabits: 0,
+                completedHabits: 0,
+                pendingHabits: 0,
+                missedHabits: 0,
+                badTriggered: 0
+            }
+        );
+
+        const detailSignature = dailyHabitStatus
+            .map(item => `${item.name}-${item.type}-${item.current}-${item.target}-${item.status}`)
+            .join('|');
+        const signature = `${dateLabel}-${dailyHabitStatus.length}-${JSON.stringify(summary)}-${detailSignature}`;
+        const fallbackRemark = summary.completedHabits === summary.scheduledHabits && summary.scheduledHabits > 0
+            ? '该做的都做了，今天算你过关。'
+            : summary.scheduledHabits === 0 && summary.badTriggered === 0
+                ? '今天没安排，也别自我感动。'
+                : '该做没做，该忍没忍。解释留着给未来。';
+
+        if (dayRemarkSignatureRef.current === signature && !dayRemarkLoading) return;
+        dayRemarkSignatureRef.current = signature;
+
+        setDayRemark(fallbackRemark);
+        setDayRemarkLoading(true);
+
+        fetchStatsDailyRemark({
+            dateLabel,
+            summary,
+            details: dailyHabitStatus
+        })
+            .then(text => {
+                setDayRemark(text);
+                setDayRemarkLoading(false);
+            })
+            .catch(err => {
+                console.warn('Stats day remark failed:', err);
+                setDayRemarkLoading(false);
+            });
+    }, [dailyHabitStatus]);
+
     // Generate calendar days
     const daysInMonth = getDaysInMonth(currentMonth);
     const firstDay = getFirstDayOfMonth(currentMonth);
@@ -185,12 +295,8 @@ const StatisticsPage: React.FC = () => {
                      before:content-[''] before:absolute before:left-[-12px] before:top-1/2 before:-translate-y-1/2 before:border-r-[12px] before:border-r-black before:border-y-[10px] before:border-y-transparent
                      after:content-[''] after:absolute after:left-[-8px] after:top-1/2 after:-translate-y-1/2 after:border-r-[9px] after:border-r-white after:border-y-[7px] after:border-y-transparent
                 ">
-                        <p className="text-lg leading-tight font-medium text-black">
-                            {selectedDateLogs.length === 0
-                                ? '这一天你除了呼吸一无所成。'
-                                : selectedDateLogs.length >= 5
-                                    ? '难得的勤奋，继续保持。'
-                                    : '还在找借口？时间一分一秒在流逝。'}
+                        <p className={`text-lg leading-tight font-medium text-black ${dayRemarkLoading ? 'opacity-70' : ''}`}>
+                            {dayRemark || '...'}
                         </p>
                     </div>
                 </div>

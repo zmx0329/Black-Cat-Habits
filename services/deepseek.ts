@@ -233,7 +233,7 @@ export async function fetchHabitDetailRemark(input: {
       {
         role: 'system',
         content:
-          '你是毒舌但公正的教官。只点评当前习惯，结合本周+历史表现，做一句话评价他的完成表现。好就表扬鼓励，不好就批评，毒舌讽刺，结合习惯强调后果（对健康，对人生，对目标的后果）。中文，不加引号，40字左右。'
+          '你是毒舌但公正的习惯监督官。只点评当前习惯，结合本周+历史表现，做一句话评价他的完成表现。好就表扬鼓励，不好就批评，毒舌讽刺，结合习惯强调后果（对健康，对人生，对目标的后果）。中文，不加引号，40字左右。'
       },
       {
         role: 'user',
@@ -271,6 +271,76 @@ export async function fetchHabitDetailRemark(input: {
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content) {
     throw new Error('Deepseek habit detail response empty');
+  }
+  return content;
+}
+
+export async function fetchStatsDailyRemark(input: {
+  dateLabel: string;
+  summary: {
+    totalHabits: number;
+    scheduledHabits: number;
+    completedHabits: number;
+    pendingHabits: number;
+    missedHabits: number;
+    badTriggered: number;
+  };
+  details: {
+    name: string;
+    type: HabitType;
+    target: number;
+    current: number;
+    status: string;
+    description?: string;
+  }[];
+}): Promise<string> {
+  const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
+  const apiUrl = import.meta.env.VITE_DEEPSEEK_API_URL || DEFAULT_API_URL;
+  if (!apiKey) throw new Error('Missing VITE_DEEPSEEK_API_KEY');
+
+  const payload = {
+    model: 'deepseek-chat',
+    temperature: 0.7,
+    max_tokens: 120,
+    messages: [
+      {
+        role: 'system',
+        content: '你是毒舌但公正的习惯监督官，只点评用户所选日期的计划完成情况。输出一句总结式话术，中文20-30字，不加引号。'
+      },
+      {
+        role: 'user',
+        content: `
+日期: ${input.dateLabel}
+当日习惯总数: ${input.summary.totalHabits}
+当日计划数: ${input.summary.scheduledHabits}
+已完成: ${input.summary.completedHabits}
+未完成: ${input.summary.pendingHabits}
+未开始: ${input.summary.missedHabits}
+坏习惯触发: ${input.summary.badTriggered}
+明细: ${JSON.stringify(input.details)}
+请根据“计划次数 vs 实际完成”做总结式点评，只看这一天，不要提一周或历史。`
+      }
+    ]
+  };
+
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Deepseek stats day failed: ${res.status} ${text}`);
+  }
+
+  const data: DeepseekResponse = await res.json();
+  const content = data.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error('Deepseek stats day response empty');
   }
   return content;
 }
