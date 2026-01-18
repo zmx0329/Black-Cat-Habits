@@ -194,7 +194,7 @@ const HabitDetailsPage: React.FC = () => {
               <p className="text-gray-500 text-sm mb-3">{habit.description}</p>
               <div className="bg-white/60 rounded-xl p-3 space-y-1.5 border border-black/5">
                 {habit.type === HabitType.GOOD && (
-                  <p className="text-sm text-gray-800"><span className="text-gray-500 font-medium">目标：</span>今日 {habit.daily_goal} 次，本周 {habit.frequency.length} 次</p>
+                  <p className="text-sm text-gray-800"><span className="text-gray-500 font-medium">目标：</span>今日 {habit.todaysTarget ?? habit.daily_goal} 次，本周 {habit.frequency.length} 次</p>
                 )}
                 <p className="text-sm text-gray-800"><span className="text-gray-500 font-medium">累计打卡：</span>今日 {habit.todayCount} 次，本周 {habit.thisWeekDays || 0} 天</p>
               </div>

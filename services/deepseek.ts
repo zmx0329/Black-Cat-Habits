@@ -145,3 +145,65 @@ export async function fetchDailyRemark(
   }
   return content;
 }
+
+export async function fetchCheckinRemark(input: {
+  habit: Habit;
+  isScheduledToday: boolean;
+  missedDaysCount: number;
+  weekDoneDays: number;
+  todayTarget: number;
+  todayCurrent: number;
+  dailyStatus: '未完成' | '刚达标' | '已超额';
+}): Promise<string> {
+  const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
+  const apiUrl = import.meta.env.VITE_DEEPSEEK_API_URL || DEFAULT_API_URL;
+  if (!apiKey) throw new Error('Missing VITE_DEEPSEEK_API_KEY');
+
+  const payload = {
+    model: 'deepseek-chat',
+    temperature: 0.7,
+    max_tokens: 120,
+    messages: [
+      {
+        role: 'system',
+        content: `你是毒舌黑猫教官。只看今天的进度，输出 20 字以内中文反馈，不加引号。`
+      },
+      {
+        role: 'user',
+        content: `
+# 打卡快照
+当前时间: ${new Date().getHours() <= 10 ? '早晨' : new Date().getHours() >= 22 ? '深夜' : '白天'}
+习惯名称: ${input.habit.name}
+习惯类型: ${input.habit.type}
+今日进度: 当前 ${input.todayCurrent} / 目标 ${input.todayTarget}
+
+# 判断逻辑
+1) 坏习惯：只要点击就是错，直接讽刺意志力。
+2) 好习惯进行中：current < target，提醒还差 {remaining} 次。
+3) 好习惯已达标：current == target 用“刚好完成”，current > target 用“超额完成，给予鼓励”。
+输出 30字，不要复读数据，不加引号。`
+      }
+    ]
+  };
+
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Deepseek checkin failed: ${res.status} ${text}`);
+  }
+
+  const data: DeepseekResponse = await res.json();
+  const content = data.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error('Deepseek checkin response empty');
+  }
+  return content.slice(0, 60);
+}

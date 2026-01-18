@@ -21,6 +21,7 @@ export interface Habit {
   // Computed fields (not in DB)
   todayCount?: number;
   thisWeekDays?: number;
+  todaysTarget?: number;
 }
 
 export interface Log {

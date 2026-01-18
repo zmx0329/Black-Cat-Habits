@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Habit, HabitType } from '../types';
 import { IMAGES } from '../constants';
-import { fetchDailyRemark } from '../services/deepseek';
+import { fetchDailyRemark, fetchCheckinRemark } from '../services/deepseek';
 
 const HomePage: React.FC = () => {
   const { habits, addLog, deleteLog, reorderHabits, logs } = useApp();
@@ -15,6 +15,8 @@ const HomePage: React.FC = () => {
   const [remark, setRemark] = useState('');
   const [remarkLoading, setRemarkLoading] = useState(false);
   const lastSignatureRef = useRef<string>('');
+  const [checkinRemark, setCheckinRemark] = useState('');
+  const [checkinRemarkLoading, setCheckinRemarkLoading] = useState(false);
 
   // Drag and Drop State
   const dragItem = useRef<number | null>(null);
@@ -37,6 +39,7 @@ const HomePage: React.FC = () => {
 
     setIsChecking(false);
     triggerRemark();
+    triggerCheckinRemark(habit, newLog);
   };
 
   const handleCardClick = (habit: Habit) => {
@@ -47,6 +50,7 @@ const HomePage: React.FC = () => {
   const closeModal = () => {
     setSelectedHabit(null);
     setCurrentLogId(null);
+    setCheckinRemark('');
   };
 
   const handleUndo = async () => {
@@ -128,9 +132,86 @@ const HomePage: React.FC = () => {
         setRemark(text);
         setRemarkLoading(false);
       })
-      .catch(error => {
-        console.warn('Deepseek remark failed:', error);
-        setRemarkLoading(false);
+        .catch(error => {
+          console.warn('Deepseek remark failed:', error);
+          setRemarkLoading(false);
+        });
+  };
+
+  const triggerCheckinRemark = (habit: Habit, newLog?: { id: string } | null) => {
+    // Build context based on current stats plus this log
+    const now = new Date();
+    const day = now.getDay();
+    const isScheduledToday = habit.type === HabitType.BAD
+      ? true
+      : (Array.isArray(habit.frequency) ? habit.frequency.includes(day) : true);
+    const weekStart = new Date(now);
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    weekStart.setDate(diff);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const logsForHabit = logs.filter(l => l.habit_id === habit.id && l.status === 'completed');
+    const logsThisWeek = logsForHabit.filter(l => new Date(l.timestamp) >= weekStart);
+    const planDaysThisWeek = (habit.frequency || []).filter(d => d <= day);
+    const doneDays = new Set(
+      logsThisWeek.map(l => {
+        const d = new Date(l.timestamp);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      })
+    );
+    const missedDaysCount = habit.type === HabitType.BAD
+      ? 0
+      : planDaysThisWeek.filter(d => {
+          // days before today only
+          return d < day && !doneDays.has(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (day - d)).toDateString());
+        }).length;
+
+    // Today progress including this click
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    const todayCountBase = logsForHabit.filter(l => {
+      const d = new Date(l.timestamp);
+      return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}` === todayKey;
+    }).length;
+    const todayCurrent = todayCountBase + (newLog ? 1 : 0);
+    const todayTarget = habit.type === HabitType.BAD ? 0 : (habit.todaysTarget ?? habit.daily_goal ?? 0);
+
+    let dailyStatus: '未完成' | '刚达标' | '已超额' = '未完成';
+    if (habit.type === HabitType.BAD) {
+      dailyStatus = '已超额';
+    } else if (todayTarget && todayCurrent > todayTarget) {
+      dailyStatus = '已超额';
+    } else if (todayTarget && todayCurrent === todayTarget) {
+      dailyStatus = '刚达标';
+    }
+
+    setCheckinRemark('');
+    setCheckinRemarkLoading(true);
+
+    const timeout = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error('check-in remark timeout')), 8000)
+    );
+
+    Promise.race([
+      fetchCheckinRemark({
+        habit,
+        isScheduledToday,
+        missedDaysCount,
+        weekDoneDays: doneDays.size,
+        todayTarget,
+        todayCurrent,
+        dailyStatus
+      }),
+      timeout
+    ])
+      .then(text => {
+        setCheckinRemark(text);
+        setCheckinRemarkLoading(false);
+      })
+      .catch(err => {
+        console.warn('Check-in remark failed:', err);
+        setCheckinRemark('线路挤爆了，先记着这次，待会再喷你。');
+        setCheckinRemarkLoading(false);
       });
   };
 
@@ -199,9 +280,9 @@ const HomePage: React.FC = () => {
                 <span className="text-[10px] text-gray-500 font-medium">今日 {habit.todayCount} 次，本周 {habit.thisWeekDays || 0} 天</span>
               </div>
               {habit.type === HabitType.GOOD && (
-                <div className="mb-3 text-[10px] text-gray-400">
-                  目标：今日 {habit.daily_goal} 次，本周 {habit.frequency?.length || 0} 天
-                </div>
+              <div className="mb-3 text-[10px] text-gray-400">
+                目标：今日 {habit.todaysTarget ?? habit.daily_goal} 次，本周 {habit.frequency?.length || 0} 天
+              </div>
               )}
               <div className="flex items-center gap-1.5 mt-auto pr-6">
                 <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0 ${habit.type === HabitType.GOOD ? 'text-[#15803d] bg-[#dcfce7]' : 'text-[#b91c1c] bg-[#fee2e2]'
@@ -255,7 +336,7 @@ const HomePage: React.FC = () => {
                              after:content-[''] after:absolute after:-top-2 after:left-1/2 after:-translate-x-1/2 after:border-b-[9px] after:border-b-white after:border-x-[7px] after:border-x-transparent
                         ">
                   <p className="text-sm font-bold text-gray-800 leading-relaxed">
-                    “终于舍得动了？<br />别以为这一次就能抵消你昨晚的熬夜。”
+                    {checkinRemark || (checkinRemarkLoading ? '生成中…' : '...')}
                   </p>
                 </div>
               </div>

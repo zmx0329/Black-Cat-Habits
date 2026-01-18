@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { Habit, Log, ChatMessage, Profile } from '../types';
+import { Habit, Log, ChatMessage, Profile, HabitType } from '../types';
 import { supabase } from '../supabase';
 
 interface AppContextType {
@@ -309,7 +309,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
             }));
 
-            return { ...habit, todayCount: todayLogs.length, thisWeekDays: uniqueDays.size };
+            const isTodayScheduled = habit.type === HabitType.BAD
+                ? true
+                : (Array.isArray(habit.frequency) ? habit.frequency.includes(day) : true);
+            const todayCount = isTodayScheduled ? todayLogs.length : 0;
+            const todaysTarget = habit.type === HabitType.BAD
+                ? 0
+                : (isTodayScheduled ? (habit.daily_goal || 0) : 0);
+
+            return { ...habit, todayCount, todaysTarget, thisWeekDays: uniqueDays.size };
         });
 
         console.log('✅ Stats calculated');
@@ -356,18 +364,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const addHabit = async (habit: Omit<Habit, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
         if (!user) return;
+        // Place new habit at top by shifting existing display_order down
         const { data, error } = await supabase
             .from('habits')
             .insert({
                 ...habit,
                 user_id: user.id,
-                display_order: habits.length
+                display_order: 0
             })
             .select()
             .single();
 
         if (!error && data) {
-            setHabits([...habits, { ...data, todayCount: 0 }]);
+            // Bump existing display_order to keep ordering stable
+            await Promise.all(
+                habits.map((h, idx) =>
+                    supabase
+                        .from('habits')
+                        .update({ display_order: idx + 1 })
+                        .eq('id', h.id)
+                )
+            );
+
+            const updatedExisting = habits.map((h, idx) => ({ ...h, display_order: idx + 1 }));
+            setHabits([{ ...data, todayCount: 0, todaysTarget: habit.daily_goal || 0 }, ...updatedExisting]);
         }
     };
 
