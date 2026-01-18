@@ -6,6 +6,15 @@ interface DeepseekResponse {
   choices?: { message?: { content?: string }; delta?: { content?: string } }[];
 }
 
+const sanitizeRemark = (text: string) => {
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/(总评|点评|评价|结论|总结)[：:]\s*/g, '');
+  while (/^[\p{Script=Han}A-Za-z]{1,6}[：:]\s*/u.test(cleaned)) {
+    cleaned = cleaned.replace(/^[\p{Script=Han}A-Za-z]{1,6}[：:]\s*/u, '');
+  }
+  return cleaned;
+};
+
 const readStream = async (
   res: Response,
   onToken: (text: string) => void
@@ -14,7 +23,10 @@ const readStream = async (
   const reader = res.body.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
-  let fullText = '';
+  let rawBuffer = '';
+  let outputText = '';
+  let leading = true;
+  const labelPrefixes = ['总评', '点评', '评价', '结论', '总结'];
 
   while (true) {
     const { value, done } = await reader.read();
@@ -35,8 +47,25 @@ const readStream = async (
           parsed?.choices?.[0]?.message?.content ??
           '';
         if (token) {
-          fullText += token;
-          onToken(fullText);
+          rawBuffer += token;
+          if (leading) {
+            const colonIndex = rawBuffer.search(/[:：]/);
+            if (colonIndex >= 0 && colonIndex <= 5) {
+              rawBuffer = rawBuffer.slice(colonIndex + 1).replace(/^\s+/, '');
+            } else if (labelPrefixes.some(prefix => prefix.startsWith(rawBuffer))) {
+              continue;
+            } else if (rawBuffer.length > 0) {
+              outputText += rawBuffer;
+              rawBuffer = '';
+              leading = false;
+            }
+          } else if (rawBuffer.length > 0) {
+            outputText += rawBuffer;
+            rawBuffer = '';
+          }
+          if (!leading) {
+            onToken(outputText);
+          }
         }
       } catch (err) {
         console.warn('Deepseek stream parse error:', err);
@@ -44,7 +73,10 @@ const readStream = async (
     }
   }
 
-  return fullText.trim();
+  if (leading && rawBuffer.length > 0) {
+    outputText += rawBuffer;
+  }
+  return outputText.trim();
 };
 
 const buildStatsPrompt = (habits: Habit[], logs: Log[]) => {
@@ -82,9 +114,9 @@ const todayLogs = logs.filter(log => toDateKey(new Date(log.timestamp)) === toda
 当前时间: ${now.toLocaleString('zh-CN')}
 
 # Data
-已完成（好习惯，含目标/描述）: ${JSON.stringify(goodCompleted)}
-已触发（坏习惯，含描述）: ${JSON.stringify(badTriggered)}
-未完成（含未达标/未开始，带目标/描述）: ${JSON.stringify(pending)}
+已完成（好习惯，含目标/描述）: ${goodCompleted.length ? goodCompleted.join('；') : '无'}
+已触发（坏习惯，含描述）: ${badTriggered.length ? badTriggered.join('；') : '无'}
+未完成（含未达标/未开始，带目标/描述）: ${pending.length ? pending.join('；') : '无'}
 总日志条数: ${logs.length}
 
 # Reminder
@@ -106,7 +138,7 @@ export async function fetchDailyRemark(
 
   const payload = {
     model: 'deepseek-chat',
-    temperature: 0.7,
+    temperature: 0.5,
     max_tokens: 120,
     stream: Boolean(onToken),
     messages: [
@@ -122,7 +154,7 @@ export async function fetchDailyRemark(
 5) 因果论：评价要指向未来后果；学习类未做=智商/阶层固化，健康类未做=身材/健康/寿命崩坏。
 语调：
  - 毒舌隐喻、因果导向，冷嘲懒惰，肯定强者。
-输出：直接给总评，50字左右，不要加引号，不要罗列数据。
+输出：直接给总评，40字左右，不要加引号，不要罗列数据。必须中文通顺、自然口语、避免生造词或错别字。
 `
       },
       {
@@ -154,7 +186,7 @@ export async function fetchDailyRemark(
 
   // Non-stream fallback
   const data: DeepseekResponse = await res.json();
-  const content = data.choices?.[0]?.message?.content?.trim();
+  const content = sanitizeRemark(data.choices?.[0]?.message?.content?.trim() || '');
   if (!content) {
     throw new Error('Deepseek response empty');
   }
@@ -176,13 +208,13 @@ export async function fetchCheckinRemark(input: {
 
   const payload = {
     model: 'deepseek-chat',
-    temperature: 0.7,
+    temperature: 0.5,
     max_tokens: 120,
     stream: Boolean(onToken),
     messages: [
       {
         role: 'system',
-        content: `你是毒舌黑猫教官。只看今天的进度，输出 40字左右中文反馈，不加引号。`
+        content: `你是毒舌黑猫教官。只看今天的进度，输出 40左右中文反馈，不加引号，要求通顺自然。`
       },
       {
         role: 'user',
@@ -197,7 +229,7 @@ export async function fetchCheckinRemark(input: {
 1) 坏习惯：只要点击就是错，直接讽刺意志力。
 2) 好习惯进行中：current < target，提醒还差 {remaining} 次。
 3) 好习惯已达标：current == target 用“刚好完成”，current > target 用“超额完成，给予鼓励”。
-输出 40字左右，不要复读数据，不加引号。`
+输出40字左右，语句通顺，不要复读数据，不加引号。`
       }
     ]
   };
@@ -222,7 +254,7 @@ export async function fetchCheckinRemark(input: {
   }
 
   const data: DeepseekResponse = await res.json();
-  const content = data.choices?.[0]?.message?.content?.trim();
+  const content = sanitizeRemark(data.choices?.[0]?.message?.content?.trim() || '');
   if (!content) {
     throw new Error('Deepseek checkin response empty');
   }
@@ -248,14 +280,14 @@ export async function fetchHabitDetailRemark(input: {
 
   const payload = {
     model: 'deepseek-chat',
-    temperature: 0.6,
+    temperature: 0.5,
     max_tokens: 160,
     stream: Boolean(onToken),
     messages: [
       {
         role: 'system',
         content:
-          '你是毒舌但公正的习惯监督官。只点评当前习惯，结合本周+历史表现，评价他的完成表现。好就表扬鼓励，不好就批评，毒舌讽刺，结合习惯强调后果（对健康，对人生，对目标的后果）。中文，不加引号，40字左右。'
+          '你是毒舌但公正的习惯监督官。只点评当前习惯，结合本周+历史表现给一句话评价。好就鼓励，不好就批评，强调后果。中文通顺，不加引号，40字左右。'
       },
       {
         role: 'user',
@@ -295,7 +327,7 @@ export async function fetchHabitDetailRemark(input: {
   }
 
   const data: DeepseekResponse = await res.json();
-  const content = data.choices?.[0]?.message?.content?.trim();
+  const content = sanitizeRemark(data.choices?.[0]?.message?.content?.trim() || '');
   if (!content) {
     throw new Error('Deepseek habit detail response empty');
   }
@@ -325,15 +357,21 @@ export async function fetchStatsDailyRemark(input: {
   const apiUrl = import.meta.env.VITE_DEEPSEEK_API_URL || DEFAULT_API_URL;
   if (!apiKey) throw new Error('Missing VITE_DEEPSEEK_API_KEY');
 
+  const detailLines = input.details.map(item => {
+    const targetPart = item.type === HabitType.BAD ? '坏习惯' : `目标${item.target}`;
+    return `${item.name}(${targetPart})：${item.current}次，${item.status}`;
+  }).join('；');
+
   const payload = {
     model: 'deepseek-chat',
-    temperature: 0.7,
+    temperature: 0.5,
     max_tokens: 120,
     stream: Boolean(onToken),
     messages: [
       {
         role: 'system',
         content: '你是毒舌但公正的习惯监督官，只点评用户所选日期的计划完成情况。输出总结式话术，好的表扬鼓励，不好的要毒舌批评，强调严重后果，中文40字左右，不加引号。'
+
       },
       {
         role: 'user',
@@ -345,7 +383,7 @@ export async function fetchStatsDailyRemark(input: {
 未完成: ${input.summary.pendingHabits}
 未开始: ${input.summary.missedHabits}
 坏习惯触发: ${input.summary.badTriggered}
-明细: ${JSON.stringify(input.details)}
+明细: ${detailLines || '无'}
 请根据“计划次数 vs 实际完成”做总结式点评，只看这一天，不要提一周或历史。`
       }
     ]
@@ -371,7 +409,7 @@ export async function fetchStatsDailyRemark(input: {
   }
 
   const data: DeepseekResponse = await res.json();
-  const content = data.choices?.[0]?.message?.content?.trim();
+  const content = sanitizeRemark(data.choices?.[0]?.message?.content?.trim() || '');
   if (!content) {
     throw new Error('Deepseek stats day response empty');
   }

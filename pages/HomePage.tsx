@@ -293,7 +293,7 @@ const HomePage: React.FC = () => {
           <div className="flex-shrink-0 w-28 relative z-10">
             <img alt="Grumpy Cat" className="w-full h-auto object-contain scale-110 translate-y-2" src={IMAGES.CAT_INSTRUCTOR} />
           </div>
-          <div className="relative bg-white border-2 border-black rounded-[15px] p-4 text-sm font-medium leading-snug w-48 shadow-sm ml-3
+          <div className="relative bg-white border-2 border-black rounded-[15px] p-4 text-sm font-medium leading-snug w-56 shadow-sm ml-3
             before:content-[''] before:absolute before:left-[-12px] before:top-1/2 before:-translate-y-1/2 before:border-r-[12px] before:border-r-black before:border-y-[10px] before:border-y-transparent
             after:content-[''] after:absolute after:left-[-8px] after:top-1/2 after:-translate-y-1/2 after:border-r-[9px] after:border-r-white after:border-y-[7px] after:border-y-transparent
           translate-x-3">
