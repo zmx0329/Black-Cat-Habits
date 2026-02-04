@@ -1,0 +1,2 @@
+[functions.agent-chat]
+verify_jwt = false
