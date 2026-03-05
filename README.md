@@ -61,6 +61,7 @@ Black Cat Habits 是一个：
 用户注册时需要填写昵称。
 
 登录成功后自动进入首页。
+
 <img width="625" height="1111" alt="image" src="https://github.com/user-attachments/assets/4fe65c50-fcc5-4a2c-9db4-a6f8d3f67226" />
 
 ---
@@ -82,6 +83,7 @@ Black Cat Habits 是一个：
 * 拖拽调整习惯顺序
 
 首页顶部会显示 **毒蛇黑猫点评**。
+
 <img width="625" height="1111" alt="image" src="https://github.com/user-attachments/assets/72c68c61-50ea-4020-8c64-4aee1596b85b" />
 
 ---
@@ -94,6 +96,7 @@ Black Cat Habits 是一个：
 * 标题与描述
 * 每日目标次数
 * 提醒时间
+
 <img width="625" height="1204" alt="image" src="https://github.com/user-attachments/assets/3d64e62b-17ac-421c-b250-748422a8f570" />
 
 
@@ -123,6 +126,7 @@ Black Cat Habits 是一个：
 * 历史记录
 
 页面会显示 **黑猫点评**。
+
 <img width="625" height="1204" alt="image" src="https://github.com/user-attachments/assets/89020178-d23a-4f70-b7ac-5ceeab7fe278" />
 
 
