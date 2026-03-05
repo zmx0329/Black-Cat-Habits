@@ -125,7 +125,7 @@ Black Cat Habits 是一个：
 * 近 6 个月热力图
 * 历史记录
 
-页面会显示 **黑猫点评**。
+页面会显示整体点评。
 
 <img width="350" alt="image" src="https://github.com/user-attachments/assets/89020178-d23a-4f70-b7ac-5ceeab7fe278" />
 
@@ -140,7 +140,7 @@ Black Cat Habits 是一个：
 
 * 查看每日习惯情况
 * 点击日期查看详细记录
-* 阅读每日总结点评
+* 每日总结点评
 
 <img width="625" alt="image" src="https://github.com/user-attachments/assets/ebfe5f70-9daf-4292-8394-c1ecc32ae55a" />
 
