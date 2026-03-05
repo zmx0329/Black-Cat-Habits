@@ -62,7 +62,7 @@ Black Cat Habits 是一个：
 
 登录成功后自动进入首页。
 
-<img width="625" height="1111" alt="image" src="https://github.com/user-attachments/assets/4fe65c50-fcc5-4a2c-9db4-a6f8d3f67226" />
+<img width="350"  alt="image" src="https://github.com/user-attachments/assets/4fe65c50-fcc5-4a2c-9db4-a6f8d3f67226" />
 
 ---
 
