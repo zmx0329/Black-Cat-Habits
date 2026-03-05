@@ -84,7 +84,7 @@ Black Cat Habits 是一个：
 
 首页顶部会显示 **毒蛇黑猫点评**。
 
-<img width="625" height="1111" alt="image" src="https://github.com/user-attachments/assets/72c68c61-50ea-4020-8c64-4aee1596b85b" />
+<img width="350" alt="image" src="https://github.com/user-attachments/assets/72c68c61-50ea-4020-8c64-4aee1596b85b" />
 
 ---
 
@@ -97,7 +97,7 @@ Black Cat Habits 是一个：
 * 每日目标次数
 * 提醒时间
 
-<img width="625" height="1204" alt="image" src="https://github.com/user-attachments/assets/3d64e62b-17ac-421c-b250-748422a8f570" />
+<img width="350" alt="image" src="https://github.com/user-attachments/assets/3d64e62b-17ac-421c-b250-748422a8f570" />
 
 
 ---
@@ -111,7 +111,7 @@ Black Cat Habits 是一个：
 * 目标
 * 提醒时间
 
-<img width="625" height="1204" alt="image" src="https://github.com/user-attachments/assets/1b654e79-29e3-459d-92eb-7764f6ba569b" />
+<img width="350" alt="image" src="https://github.com/user-attachments/assets/1b654e79-29e3-459d-92eb-7764f6ba569b" />
 
 
 ---
@@ -127,7 +127,7 @@ Black Cat Habits 是一个：
 
 页面会显示 **黑猫点评**。
 
-<img width="625" height="1204" alt="image" src="https://github.com/user-attachments/assets/89020178-d23a-4f70-b7ac-5ceeab7fe278" />
+<img width="350" alt="image" src="https://github.com/user-attachments/assets/89020178-d23a-4f70-b7ac-5ceeab7fe278" />
 
 
 ---
@@ -142,7 +142,7 @@ Black Cat Habits 是一个：
 * 点击日期查看详细记录
 * 阅读每日总结点评
 
-<img width="625" height="1204" alt="image" src="https://github.com/user-attachments/assets/ebfe5f70-9daf-4292-8394-c1ecc32ae55a" />
+<img width="625" alt="image" src="https://github.com/user-attachments/assets/ebfe5f70-9daf-4292-8394-c1ecc32ae55a" />
 
 
 ---
