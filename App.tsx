@@ -7,7 +7,6 @@ import HomePage from './pages/HomePage';
 import AddEditHabitPage from './pages/AddEditHabitPage';
 import HabitDetailsPage from './pages/HabitDetailsPage';
 import StatisticsPage from './pages/StatisticsPage';
-import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import JournalPage from './pages/JournalPage';
 import AuthPage from './pages/AuthPage';
@@ -57,7 +56,6 @@ const Layout: React.FC = () => {
           <Route path="/edit/:id" element={<ProtectedRoute><AddEditHabitPage /></ProtectedRoute>} />
           <Route path="/details/:id" element={<ProtectedRoute><HabitDetailsPage /></ProtectedRoute>} />
           <Route path="/statistics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
-          <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/journal/:logId" element={<ProtectedRoute><JournalPage /></ProtectedRoute>} />
         </Routes>

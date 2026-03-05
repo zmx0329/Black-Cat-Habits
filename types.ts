@@ -34,15 +34,6 @@ export interface Log {
   status: 'completed' | 'missed' | 'skipped';
 }
 
-export interface ChatMessage {
-  id: string;
-  user_id?: string;
-  sender: 'user' | 'ai';
-  text: string;
-  timestamp: string; // ISO string
-  created_at?: string;
-}
-
 export interface Profile {
   id: string;
   username: string;

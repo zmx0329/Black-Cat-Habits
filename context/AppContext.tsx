@@ -1,11 +1,10 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { Habit, Log, ChatMessage, Profile, HabitType } from '../types';
+import { Habit, Log, Profile, HabitType } from '../types';
 import { supabase } from '../supabase';
 
 interface AppContextType {
     habits: Habit[];
     logs: Log[];
-    messages: ChatMessage[];
     loading: boolean;
     addHabit: (habit: Omit<Habit, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
     updateHabit: (habit: Habit) => Promise<void>;
@@ -14,7 +13,6 @@ interface AppContextType {
     addLog: (habitId: string, status?: 'completed' | 'missed' | 'skipped') => Promise<Log | null>;
     deleteLog: (logId: string) => Promise<void>;
     updateLogNote: (logId: string, note: string) => Promise<void>;
-    sendMessage: (text: string) => Promise<void>;
     user: Profile | null;
     login: (email: string, password: string) => Promise<{ error?: string }>;
     signup: (email: string, password: string, username: string) => Promise<{ error?: string }>;
@@ -33,7 +31,6 @@ export const useApp = () => {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [habits, setHabits] = useState<Habit[]>([]);
     const [logs, setLogs] = useState<Log[]>([]);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [user, setUser] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -70,7 +67,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Safety timeout to avoid stuck loading on slow networks
         const timer = setTimeout(() => {
             if (mounted) {
-                console.warn("⏰ Loading timed out");
+                console.warn("�?Loading timed out");
                 setLoading(false);
             }
         }, 10000);
@@ -81,13 +78,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
                 if (sessionError) {
-                    console.error('❌ Session error:', sessionError);
+                    console.error('�?Session error:', sessionError);
                     setLoading(false);
                     return;
                 }
 
                 if (session?.user) {
-                    console.log('✅ Session found, user ID:', session.user.id);
+                    console.log('�?Session found, user ID:', session.user.id);
 
                     // Build profile from auth metadata immediately
                     const profile: Profile = {
@@ -97,15 +94,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         created_at: session.user.created_at
                     };
 
-                    console.log('✅ Profile built from metadata:', profile.username);
+                    console.log('�?Profile built from metadata:', profile.username);
                     setUser(profile);
 
                     // Load data
                     try {
                         await fetchData(session.user.id);
-                        console.log('✅ Initial data loaded');
+                        console.log('�?Initial data loaded');
                     } catch (fetchError) {
-                        console.error('❌ Data fetch failed:', fetchError);
+                        console.error('�?Data fetch failed:', fetchError);
                     }
 
                     // Background: sync to profiles table (non-blocking)
@@ -116,10 +113,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     console.log('ℹ️  No active session');
                 }
             } catch (error) {
-                console.error("❌ Auth check failed:", error);
+                console.error("�?Auth check failed:", error);
             } finally {
                 if (mounted) {
-                    console.log('✅ Auth check complete');
+                    console.log('�?Auth check complete');
                     setLoading(false);
                     clearTimeout(timer);
                 }
@@ -141,7 +138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     created_at: session.user.created_at
                 };
 
-                console.log('✅ Profile built from auth event:', profile.username);
+                console.log('�?Profile built from auth event:', profile.username);
                 setUser(profile);
 
                 // Load data
@@ -149,7 +146,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     await fetchData(session.user.id);
                     setLoading(false);
                 } catch (error) {
-                    console.error('❌ Data fetch in auth change failed:', error);
+                    console.error('�?Data fetch in auth change failed:', error);
                     setLoading(false);
                 }
 
@@ -161,7 +158,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 setUser(null);
                 setHabits([]);
                 setLogs([]);
-                setMessages([]);
             }
         });
 
@@ -188,7 +184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (error) {
             console.warn('Profile sync warning:', error.message);
         } else {
-            console.log('✅ Profile synced to database');
+            console.log('�?Profile synced to database');
         }
     };
 
@@ -219,8 +215,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ));
         }
 
-        if (habitsError) console.error('❌ Habits fetch error:', habitsError);
-        else console.log('✅ Habits fetched:', habitsData?.length || 0);
+        if (habitsError) console.error('�?Habits fetch error:', habitsError);
+        else console.log('�?Habits fetched:', habitsData?.length || 0);
 
         // Fetch logs
         console.log('📊 Fetching logs...');
@@ -246,35 +242,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ));
         }
 
-        if (logsError) console.error('❌ Logs fetch error:', logsError);
-        else console.log('✅ Logs fetched:', logsData?.length || 0);
-
-        // Fetch messages
-        console.log('📊 Fetching messages...');
-        let { data: messagesData, error: messagesError } = await withTimeout(
-            supabase
-                .from('chat_messages')
-                .select('*')
-                .eq('user_id', userId)
-                .order('timestamp', { ascending: true }),
-            8000,
-            'Fetch messages'
-        );
-
-        if (isMissingColumn(messagesError, 'timestamp')) {
-            ({ data: messagesData, error: messagesError } = await withTimeout(
-                supabase
-                    .from('chat_messages')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .order('created_at', { ascending: true }),
-                8000,
-                'Fetch messages (created_at fallback)'
-            ));
-        }
-
-        if (messagesError) console.error('❌ Messages fetch error:', messagesError);
-        else console.log('✅ Messages fetched:', messagesData?.length || 0);
+        if (logsError) console.error('�?Logs fetch error:', logsError);
+        else console.log('�?Logs fetched:', logsData?.length || 0);
 
         console.log('📊 Calculating stats...');
         // Calculate today's count and this week's unique active days for each habit
@@ -286,7 +255,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         monday.setHours(0, 0, 0, 0);
 
         const normalizedLogs = (logsData || []).map(normalizeTimestamp);
-        const normalizedMessages = (messagesData || []).map(normalizeTimestamp);
 
         const habitsWithCount = (habitsData || []).map(habit => {
             const habitLogs = normalizedLogs.filter(log => log.habit_id === habit.id && log.status === 'completed');
@@ -320,11 +288,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return { ...habit, todayCount, todaysTarget, thisWeekDays: uniqueDays.size };
         });
 
-        console.log('✅ Stats calculated');
+        console.log('�?Stats calculated');
         setHabits(habitsWithCount);
         setLogs(normalizedLogs);
-        setMessages(normalizedMessages);
-        console.log('✅ Data fetch complete!');
+        console.log('�?Data fetch complete!');
     };
 
     const refreshData = async () => {
@@ -351,12 +318,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setUser(null);
             setHabits([]);
             setLogs([]);
-            setMessages([]);
-            console.log('✅ Logout successful');
+            console.log('�?Logout successful');
             // Force navigation to login page using hash router
             window.location.hash = '/login';
         } catch (error) {
-            console.error('❌ Logout error:', error);
+            console.error('�?Logout error:', error);
             // Even if there's an error, try to navigate to login
             window.location.hash = '/login';
         }
@@ -510,89 +476,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
-    const sendMessage = async (text: string) => {
-        if (!user) return;
-
-        // Save user message
-        const now = new Date().toISOString();
-        let { data: userMsg, error: userError } = await supabase
-            .from('chat_messages')
-            .insert({
-                user_id: user.id,
-                sender: 'user',
-                text,
-                timestamp: now
-            })
-            .select()
-            .single();
-
-        if (isMissingColumn(userError, 'timestamp')) {
-            ({ data: userMsg, error: userError } = await supabase
-                .from('chat_messages')
-                .insert({
-                    user_id: user.id,
-                    sender: 'user',
-                    text,
-                    created_at: now
-                })
-                .select()
-                .single());
-        }
-
-        if (!userError && userMsg) {
-            setMessages(prev => [...prev, normalizeTimestamp(userMsg)]);
-        }
-
-        // Simulate AI response
-        setTimeout(async () => {
-            const aiResponses = [
-                '哼，继续保持。',
-                '终于想起来了？',
-                '别得意，明天还得继续。',
-                '不错，但还不够。',
-                '人类，你的自律程度令我刮目相看。',
-            ];
-            const aiText = aiResponses[Math.floor(Math.random() * aiResponses.length)];
-
-            const now = new Date().toISOString();
-            let { data: aiMsg, error: aiError } = await supabase
-                .from('chat_messages')
-                .insert({
-                    user_id: user.id,
-                    sender: 'ai',
-                    text: aiText,
-                    timestamp: now
-                })
-                .select()
-                .single();
-
-            if (isMissingColumn(aiError, 'timestamp')) {
-                ({ data: aiMsg, error: aiError } = await supabase
-                    .from('chat_messages')
-                    .insert({
-                        user_id: user.id,
-                        sender: 'ai',
-                        text: aiText,
-                        created_at: now
-                    })
-                    .select()
-                    .single());
-            }
-
-            if (!aiError && aiMsg) {
-                setMessages(prev => [...prev, normalizeTimestamp(aiMsg)]);
-            }
-        }, 1000);
-    };
-
     return (
         <AppContext.Provider value={{
-            habits, logs, messages, loading, user,
+            habits, logs, loading, user,
             addHabit, updateHabit, deleteHabit, reorderHabits,
-            addLog, deleteLog, updateLogNote, sendMessage,
+            addLog, deleteLog, updateLogNote,
             login, signup, logout, refreshData
         }}>
             {children}
         </AppContext.Provider>
     );
 };
+
+
