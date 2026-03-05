@@ -142,7 +142,7 @@ Black Cat Habits 是一个：
 * 点击日期查看详细记录
 * 每日总结点评
 
-<img width="625" alt="image" src="https://github.com/user-attachments/assets/ebfe5f70-9daf-4292-8394-c1ecc32ae55a" />
+<img width="350" alt="image" src="https://github.com/user-attachments/assets/ebfe5f70-9daf-4292-8394-c1ecc32ae55a" />
 
 
 ---
